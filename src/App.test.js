@@ -1,13 +1,15 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 
 const addTask = async (name) => {
   const input = screen.getByLabelText('新しいタスク');
-  await userEvent.clear(input);
-  await userEvent.type(input, name);
   const addButton = screen.getByRole('button', { name: '追加' });
-  await userEvent.click(addButton);
+  await act(async () => {
+    await userEvent.clear(input);
+    await userEvent.type(input, name);
+    await userEvent.click(addButton);
+  });
 };
 
 test('タスクを追加できる', async () => {
@@ -15,9 +17,9 @@ test('タスクを追加できる', async () => {
 
   await addTask('ミーティングの準備');
 
-  expect(screen.getByText('ミーティングの準備')).toBeInTheDocument();
+  expect(await screen.findByText('ミーティングの準備')).toBeInTheDocument();
   expect(
-    screen.getByRole('button', { name: 'ミーティングの準備 を編集' }),
+    await screen.findByRole('button', { name: 'ミーティングの準備 を編集' }),
   ).toBeInTheDocument();
 });
 
@@ -28,7 +30,9 @@ test('未完了タスクが完了済みタスクより上に並ぶ', async () =>
   await addTask('タスクB');
 
   const checkboxes = screen.getAllByRole('checkbox');
-  await userEvent.click(checkboxes[0]);
+  await act(async () => {
+    await userEvent.click(checkboxes[0]);
+  });
 
   const listItems = screen.getAllByRole('listitem');
   expect(within(listItems[0]).getByText('タスクB')).toBeInTheDocument();
@@ -41,10 +45,14 @@ test('タスクを削除できる', async () => {
   await addTask('タスクC');
 
   const editButton = screen.getByRole('button', { name: 'タスクC を編集' });
-  await userEvent.click(editButton);
+  await act(async () => {
+    await userEvent.click(editButton);
+  });
 
   const deleteButton = await screen.findByRole('button', { name: '削除' });
-  await userEvent.click(deleteButton);
+  await act(async () => {
+    await userEvent.click(deleteButton);
+  });
 
   await waitFor(() => {
     expect(screen.queryByText('タスクC')).not.toBeInTheDocument();

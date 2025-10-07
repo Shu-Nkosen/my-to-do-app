@@ -25,6 +25,71 @@
 npm install
 ```
 
+## ☁️ Firebase / Firestore 設定
+
+このアプリは Firebase Authentication と Cloud Firestore を利用します。以下の手順でバックエンドを用意してください。
+
+### 1. Firebase プロジェクトを用意
+
+1. [Firebase Console](https://console.firebase.google.com/) でプロジェクトを作成。
+2. 「アプリを追加」で **Web アプリ** を選択し、表示される構成情報を控えます。
+3. プロジェクトで **Authentication → Sign-in method** を開き、メール/パスワードを有効化します。
+
+### 2. Firestore を有効化
+
+1. サイドバーの **Firestore Database** を開き、「データベースを作成」から本番/テストモードを選んで開始。
+2. リージョンを選択し、作成が完了したら `tasks` コレクション配下に任意のドキュメントを 1 件追加しておくと UI がすぐに動作確認できます。
+	 - 推奨フィールド例:
+		 - `title`: string
+		 - `description`: string
+		 - `dueDate`: string (YYYY-MM-DD 形式、空文字可)
+		 - `completed`: boolean
+		 - `ownerId`: string (`auth.uid`)
+		 - `createdAt`: Firestore timestamp (サーバー側で自動付与)
+
+### 3. 環境変数を設定
+
+`src/firebase.js` は以下の環境変数を参照します。ルート直下に `.env.local` を作成し値を設定してください。
+
+```
+REACT_APP_FIREBASE_API_KEY=xxxxxxxxxxxxxxxxxxxx
+REACT_APP_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=your-project-id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=1234567890
+REACT_APP_FIREBASE_APP_ID=1:1234567890:web:abcdefghijklmnopqrstuvwxyz
+```
+
+> `.env.local` は Git にコミットしないよう `.gitignore` に含まれています。
+
+### 4. セキュリティルールを更新
+
+各ユーザーが自分のタスクだけ読めるよう、Firestore ルールを以下のように更新してデプロイしてください。
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+`firestore.rules` の例:
+
+```
+rules_version = '2';
+service cloud.firestore {
+	match /databases/{database}/documents {
+		match /tasks/{taskId} {
+			allow read, write: if request.auth != null && request.auth.uid == resource.data.ownerId;
+
+			// 新規作成時は作成者が自分自身であることをチェック
+			allow create: if request.auth != null && request.auth.uid == request.resource.data.ownerId;
+		}
+	}
+}
+```
+
+### 5. (任意) ローカル開発用のデータ初期化
+
+実データが無い状態でも UI が動作するよう、サインイン後にタスクを追加するだけで自動的にドキュメントが生成されます。必要に応じて Firebase Emulator Suite を併用してください。
+
 ### 開発サーバーを起動
 
 ```bash
