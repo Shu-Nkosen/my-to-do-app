@@ -1,0 +1,49 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /tasks/{taskId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      function isOwner() {
+        return isSignedIn() && resource.data.ownerId == request.auth.uid;
+      }
+
+      function isTaskPayloadValid() {
+        return request.resource.data.keys().hasOnly([
+          "title",
+          "description",
+          "dueDate",
+          "completed",
+          "ownerId",
+          "createdAt",
+          "createdAtMillis",
+          "updatedAt"
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 200
+        && (!request.resource.data.keys().hasAny(["description"]) || (request.resource.data.description is string && request.resource.data.description.size() <= 1000))
+        && (!request.resource.data.keys().hasAny(["dueDate"]) || request.resource.data.dueDate is string)
+        && request.resource.data.completed is bool
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && (!request.resource.data.keys().hasAny(["createdAtMillis"]) || request.resource.data.createdAtMillis is number)
+        && (!request.resource.data.keys().hasAny(["updatedAt"]) || request.resource.data.updatedAt is timestamp);
+      }
+
+      allow read: if isOwner();
+
+      allow create: if isSignedIn()
+        && isTaskPayloadValid();
+
+      allow update: if isOwner()
+        && isTaskPayloadValid()
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if isOwner();
+    }
+  }
+}
