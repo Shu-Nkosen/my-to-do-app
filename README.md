@@ -112,6 +112,36 @@ npm run build
 
 `build/` フォルダに最適化された成果物が出力されます。
 
+### GitHub と Firebase Hosting の連携 (CI/CD)
+
+継続的にデプロイしたい場合は GitHub Actions を使った自動化が便利です。以下の手順で設定できます。
+
+1. **GitHub リポジトリを準備**  
+	ローカルリポジトリを GitHub 上に push し、`main` ブランチなどを用意しておきます。
+
+2. **Firebase CLI でワークフローを生成**  
+	```bash
+	firebase login
+	firebase init hosting:github
+	```
+	対話形式で GitHub アカウントへのアクセスを許可し、
+	- 対象リポジトリ
+	- トリガーするブランチ (例: `main`)
+	- デプロイ先チャネル (例: `live`)
+	を選択します。
+
+3. **GitHub Secrets の確認**  
+	上記コマンドで生成された GitHub Actions のワークフローは `FIREBASE_SERVICE_ACCOUNT` などのシークレットを使います。
+	`firebase init hosting:github` 実行時に CLI が自動で登録してくれるため、GitHub のリポジトリ設定 → Secrets and variables → Actions で値が追加されていることを確認してください。
+
+4. **ワークフローの配置と動作**  
+	`.github/workflows/firebase-hosting-merge.yml`（ブランチマージ用）や `firebase-hosting-pull-request.yml`（プレビュー用）が作成されます。コミットや PR を開くと GitHub Actions がビルド→デプロイを実行し、結果が PR 上にコメントされます。
+
+5. **環境変数の取り扱い**  
+	`.env.production` のようなファイルを用意する場合は、GitHub Secrets に登録して Actions 内で `echo "$ENV_FILE" > .env.production` のように復元するか、必要な値のみ環境変数として設定してください。
+
+これで、ブランチへ push するだけで Firebase Hosting へのデプロイが自動実行されます。ロールバックやプレビューも Firebase Console から容易に操作できます。
+
 ## 📦 プロジェクト構成
 
 - `src/App.js` — アプリのメインコンポーネント
